@@ -67,3 +67,4 @@ PYTHONPATH=src python3 -m spectrescope.cli elf-audit /bin/ls
 # 4. Run unit & integration tests
 PYTHONPATH=src python3 -m unittest discover -s tests -v
 ```
+# SpectreScope
