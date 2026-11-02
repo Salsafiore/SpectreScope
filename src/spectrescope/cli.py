@@ -144,6 +144,41 @@ def cmd_elf_audit(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_summary(args: argparse.Namespace) -> int:
+    prof = run_cache_calibration(iterations=1000)
+    spec = run_spectre_v1_simulation(trials_per_byte=35, threshold_cycles=prof.threshold_cycles)
+    aslr_rep = analyze_aslr_entropy(samples=24)
+    root = Path(__file__).resolve().parents[2]
+    elf_rep = audit_elf_binary(root / "build" / "aslr_probe", max_gadgets_per_type=2)
+
+    gadgets_summary = " • ".join(f"{g.mnemonic} (0x{g.vaddr:x})" for g in elf_rep.gadgets[:3])
+
+    print("=" * 80)
+    print(" SpectreScope :: Research Dashboard  |  github.com/Salsafiore/SpectreScope")
+    print("=" * 80)
+    print(" [1] Flush+Reload Cache Hierarchy Profiler (rdtscp + clflush)")
+    print(f"     L1/LLC Cache Hit : {prof.hit_median_cycles:>3} cycles (median)     Optimal Threshold : {prof.threshold_cycles} cycles")
+    print(f"     DRAM Memory Miss : {prof.miss_median_cycles:>3} cycles (median)     Separability Ratio: {prof.separability_ratio:.2f}x (Miss / Hit)")
+    print()
+    print(" [2] Spectre v1 Speculative Secret Recovery (CVE-2017-5753)")
+    print(f"     Target Secret    : {spec.target_secret} (OOB: {spec.oob_delta:+d} bytes)")
+    print(f"     Recovered Secret : {spec.recovered_secret} [Accuracy: {spec.accuracy * 100:.1f}%]")
+    print("     Evasion Strategy : Prime-stride (167) 256-page probe (defeats prefetcher)")
+    print()
+    print(f" [3] Linux Kernel ASLR Shannon Entropy Quantification (Samples: {aslr_rep.samples})")
+    print("     Region             | Shannon Entropy | Varying Bitmask    | Assessment")
+    print("     -------------------+-----------------+--------------------+------------")
+    for name, reg in aslr_rep.regions.items():
+        assessment_tag = "STRONG (>=24b)" if reg.shannon_entropy_bits >= 24 else "MODERATE"
+        print(f"     {name:<18} | {reg.shannon_entropy_bits:>5.2f} bits     | 0x{reg.varying_mask:016x} | {assessment_tag}")
+    print()
+    print(" [4] ELF64 Binary Hardening & ROP Gadget Auditor")
+    print(f"     Mitigations : PIE: {'YES' if elf_rep.pie_enabled else 'NO'} | NX: {'YES' if elf_rep.nx_enabled else 'NO'} | RELRO: {elf_rep.relro_mode} | Score: {elf_rep.aslr_leak_resistance_score}/100")
+    print(f"     ROP Gadgets : {gadgets_summary}")
+    print("=" * 80)
+    return 0
+
+
 def cmd_all(args: argparse.Namespace) -> int:
     cmd_calibrate(argparse.Namespace(iterations=1500, json=False))
     print()
@@ -187,6 +222,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_all = sub.add_parser("all", help="Run full microarchitectural + ASLR + ELF security research suite")
     p_all.set_defaults(func=cmd_all)
+
+    p_sum = sub.add_parser("summary", help="Print clean single-screen executive research dashboard (fits on 1 screen)")
+    p_sum.set_defaults(func=cmd_summary)
+
+    p_dash = sub.add_parser("dashboard", help="Alias for summary dashboard")
+    p_dash.set_defaults(func=cmd_summary)
 
     return parser
 
