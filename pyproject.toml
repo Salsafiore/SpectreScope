@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spectrescope"
+version = "0.1.0"
+description = "x86_64 Microarchitectural Cache Side-Channel (Flush+Reload), ASLR Entropy & ELF ROP Security Analyzer"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Gunmay Pachauri", email = "gunmaypachauri566@gmail.com"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: C",
+    "Programming Language :: Assembly",
+    "Topic :: Security",
+]
+
+[project.scripts]
+spectrescope = "spectrescope.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
